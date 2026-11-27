@@ -53,6 +53,8 @@ Node 依赖使用两个提交到仓库的 `pnpm-lock.yaml`；Python 依赖使用
 
 Compose 把宿主机 `./data` 挂载到容器 `/home/node`。因此容器中的 `~` 就是 `/home/node`：
 
+数据目录挂载使用 `:Z`，为启用 SELinux 的 Docker/Podman 设置私有容器标签。在 Fedora 等系统上，这让容器可以访问宿主机的数据目录；标签由挂载配置处理，文件所有权由入口脚本初始化。
+
 ```text
 /opt/dsh/                              DSH 主程序和镜像内置依赖
 /opt/dsh-seed/profiles/web/             完整预装 profile，供首次初始化

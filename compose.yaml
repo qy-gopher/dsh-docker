@@ -7,7 +7,7 @@ services:
     ports:
       - '${DSH_PUBLISH_ADDRESS:-127.0.0.1}:${DSH_PUBLISH_PORT:-3080}:3080'
     volumes:
-      - ./data:/home/node
+      - ./data:/home/node:Z
     working_dir: /home/node/workspaces/default
     environment:
       DSH_BIND_HOST: auto
