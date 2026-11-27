@@ -95,5 +95,5 @@ start_web
         | rg --quiet DSH_DOCKER_PERSISTENT_MEMORY
 '
 "$container_engine" logs "$test_container" > "$temporary_directory/recreated.log" 2>&1
-rg --quiet DSH_DOCKER_SMOKE_PLUGIN_LOADED "$temporary_directory/recreated.log"
+grep -Fq DSH_DOCKER_SMOKE_PLUGIN_LOADED "$temporary_directory/recreated.log"
 printf 'Smoke test passed: Web, plugins, memory, IM state, and workspace survive container recreation.\n'
