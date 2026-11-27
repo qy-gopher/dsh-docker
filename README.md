@@ -127,16 +127,21 @@ DSH 拒绝 `--host 0.0.0.0`；入口脚本从容器网卡选择具体 IP，再�
 
 ### 出站代理
 
-Compose 使用专门的变量，避免把宿主机的回环代理直接传入容器：
+在 `.env` 中直接设置标准代理环境变量，大小写两种形式用于兼容不同工具：
 
 ```dotenv
-DSH_HTTP_PROXY=http://proxy:8080
-DSH_HTTPS_PROXY=http://proxy:8080
-DSH_NO_PROXY=localhost,127.0.0.1,::1
-DSH_NODE_USE_ENV_PROXY=1
+HTTP_PROXY=http://proxy:8080
+http_proxy=http://proxy:8080
+HTTPS_PROXY=http://proxy:8080
+https_proxy=http://proxy:8080
+NO_PROXY=localhost,127.0.0.1,::1
+no_proxy=localhost,127.0.0.1,::1
+NODE_USE_ENV_PROXY=1
 ```
 
-这里的 `proxy` 必须是容器能够访问的代理地址。Compose 会把这些值传成容器内标准的 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY` 和 `NODE_USE_ENV_PROXY`。
+Compose 会将这些变量直接传入容器；`NODE_USE_ENV_PROXY=1` 启用 Node.js 的环境代理支持，第三方工具根据自身对代理环境变量的支持使用代理。修改后执行 `docker compose up -d` 使配置生效。
+
+这里的 `proxy` 必须是容器能够访问的代理地址，`localhost` 或 `127.0.0.1` 指向容器自身。Compose 优先使用当前 shell 中的同名变量，其次读取 `.env`；如果宿主机已设置代理，也需要确保其地址适用于容器。
 
 ## 构建与验证
 
