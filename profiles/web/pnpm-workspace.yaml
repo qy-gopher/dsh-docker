@@ -1,0 +1,8 @@
+packages:
+  - .
+
+# Match DSH's profile linker and use the host's DSH peer packages.
+nodeLinker: hoisted
+autoInstallPeers: false
+allowBuilds:
+  sharp: true

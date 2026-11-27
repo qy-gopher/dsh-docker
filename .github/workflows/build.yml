@@ -1,0 +1,45 @@
+name: Build and verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+      - run: make test
+      - run: docker compose config --quiet
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: dsh-docker:ci
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64
+      - run: make smoke CONTAINER_ENGINE=docker IMAGE=dsh-docker:ci
+
+  arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64

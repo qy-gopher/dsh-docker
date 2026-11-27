@@ -1,0 +1,3 @@
+- insert:
+    - id: docker-smoke-plugin
+      name: dsh-docker-smoke-plugin

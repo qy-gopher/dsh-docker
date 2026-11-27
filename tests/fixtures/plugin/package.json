@@ -1,0 +1,17 @@
+{
+  "name": "dsh-docker-smoke-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "dsh": ">=0.2.2-rc.5 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

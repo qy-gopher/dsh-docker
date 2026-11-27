@@ -1,0 +1,15 @@
+packages:
+  - .
+
+nodeLinker: hoisted
+# The runtime installs the framework peers that plugin profiles reuse.
+autoInstallPeers: true
+allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': true
+  '@vscode/ripgrep': true
+  esbuild: true
+  koffi: true
+  node-pty: true
+  protobufjs: true
+  sharp: true
