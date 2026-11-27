@@ -25,6 +25,7 @@ trap cleanup EXIT
 
 start_web() {
     "$container_engine" run -d --name "$test_container" \
+        --shm-size 1g \
         --volume "$test_volume:/home/node" --publish 127.0.0.1::3080 \
         --env DSH_PUBLIC_URL=http://localhost:3080/ \
         --env DSH_TRUSTED_HOSTS=127.0.0.1 \
@@ -54,9 +55,14 @@ start_web
     test "$HOME" = /home/node
     dsh --version
     mnemon --version
+    chromium --version
+    agent-browser --version
     python -c "import docx, openpyxl, pptx, pypdf"
     node -e '\''const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync(process.env.DSH_HOME+"/profiles/web/package.json")); for(const name of ["dsh-mnemon","@xmanrui/dsh-im"]) { if(!p.dsh.profile.bundles.includes(name)) throw new Error(name+" is disabled"); if(!fs.existsSync(process.env.DSH_HOME+"/profiles/web/node_modules/"+name)) throw new Error(name+" is missing"); }'\''
 '
+printf 'Checking headless browser automation as the node user...\n'
+"$container_engine" exec --interactive --user node "$test_container" \
+    python - < "$repository_directory/tests/browser_smoke.py"
 host_port="$("$container_engine" port "$test_container" 3080/tcp | head -n 1)"
 python3 "$repository_directory/tests/authenticated_web.py" \
     "$container_engine" "$test_container" "http://$host_port/" "$temporary_directory"
@@ -91,9 +97,10 @@ start_web
     rg --quiet DSH_DOCKER_USER_CONFIGURATION "$DSH_HOME/profiles/web/cordis.patch.yml"
     rg --quiet "persistent IM state" "$DSH_HOME/integrations/dsh-im/docker-smoke-state"
     rg --quiet "persistent workspace" "$HOME/workspaces/default/docker-smoke-file"
+    test -s "$HOME/workspaces/default/docker-browser-smoke.png"
     mnemon --store docker-smoke recall DSH_DOCKER_PERSISTENT_MEMORY --basic \
         | rg --quiet DSH_DOCKER_PERSISTENT_MEMORY
 '
 "$container_engine" logs "$test_container" > "$temporary_directory/recreated.log" 2>&1
 grep -Fq DSH_DOCKER_SMOKE_PLUGIN_LOADED "$temporary_directory/recreated.log"
-printf 'Smoke test passed: Web, plugins, memory, IM state, and workspace survive container recreation.\n'
+printf 'Smoke test passed: browser automation works; Web, plugins, memory, IM state, and workspace survive container recreation.\n'

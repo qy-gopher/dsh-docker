@@ -4,6 +4,7 @@ services:
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 45s
+    shm_size: '1gb'
     ports:
       - '${DSH_PUBLISH_ADDRESS:-127.0.0.1}:${DSH_PUBLISH_PORT:-3080}:3080'
     volumes:

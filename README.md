@@ -37,6 +37,7 @@ docker compose up -d
 | dsh-mnemon | `0.5.55` |
 | IM 插件 | `@xmanrui/dsh-im@5.10.0` |
 | Mnemon CLI | `@mnemon-dev/mnemon@0.2.15` |
+| 浏览器自动化 | Debian Chromium、`agent-browser@0.45.0`，支持 amd64、arm64 |
 | Python | Debian Python 3.11、uv `0.9.11`、python-docx、openpyxl、python-pptx、pypdf |
 | 日常工具 | Bash、Git、SSH、curl、rg、jq、zip/unzip、ffmpeg、中文字体 |
 | 运行辅助 | tini、gosu、bubblewrap；保留 DSH 随包交付的原生依赖 |
@@ -47,7 +48,22 @@ Node 依赖使用两个提交到仓库的 `pnpm-lock.yaml`；Python 依赖使用
 
 主程序安装必需的 peer 依赖；插件 profile 使用 DSH 的默认策略，复用宿主提供的框架依赖。
 
-镜像默认启用 `web` profile 中的两个插件。Mnemon CLI 单独提供默认本地记忆后端。DSH 的 Office 渲染使用随 npm 依赖交付的 LibreOffice Kit；浏览器自动化所需的 Chromium 等组件可以按用途扩展镜像。
+镜像默认启用 `web` profile 中的两个插件。Mnemon CLI 单独提供默认本地记忆后端。DSH 的 Office 渲染使用随 npm 依赖交付的 LibreOffice Kit。Chromium 和 agent-browser 在构建时安装，启动后可以直接进行无头浏览器自动化。Chromium 使用 Debian 软件仓库的版本，实际版本记录在 `/opt/dsh-image/versions.json`。
+
+### 浏览器自动化
+
+agent-browser 已加入 PATH，默认通过 `AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium` 使用镜像内的浏览器，无需再执行 `agent-browser install`。例如：
+
+```sh
+docker compose exec --user node dsh agent-browser open https://example.com
+docker compose exec --user node dsh agent-browser snapshot -i
+docker compose exec --user node dsh agent-browser screenshot /home/node/workspaces/default/example.png
+docker compose exec --user node dsh agent-browser close
+```
+
+不同任务可用 `--session 名称` 隔离浏览器会话。需要跨容器重建保留登录状态时，用 `--profile /home/node/.config/agent-browser/任务名称` 指定持久化浏览器目录；同一目录只供一个活动会话使用。截图、下载和导出的状态文件放到 `/home/node` 下，即可随现有数据目录持久化。代理可以通过 `agent-browser skills get core` 读取与安装版本对应的操作说明。
+
+Compose 为浏览器设置 `1gb` 的 `/dev/shm`。agent-browser 会自动适配 Docker/Podman 中的浏览器沙箱与共享内存限制。使用其他自动化库时，显式指定 `/usr/bin/chromium`；Playwright 的 `chromium.launch()` 需要传入 `executablePath`，容器环境通常还需要 `args: ['--no-sandbox']`。
 
 ## 持久化与目录
 
@@ -160,7 +176,7 @@ make build CONTAINER_ENGINE=podman
 make smoke CONTAINER_ENGINE=podman
 ```
 
-`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留。`make smoke` 创建临时数据卷，启动 Web、验证临时登录、安装一个本地测试插件、保存真实 Mnemon 记忆和持久化文件，再重建容器验证插件加载与数据保留。测试不调用模型 API，结束后清理自己的容器和卷。
+`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留。`make smoke` 创建临时数据卷，启动 Web、以 `node` 用户验证 Chromium 与 agent-browser 的页面打开、中文快照、点击和截图，验证临时登录、安装一个本地测试插件、保存真实 Mnemon 记忆和持久化文件，再重建容器验证插件加载与数据保留。浏览器测试使用内嵌页面；测试不调用模型 API，结束后清理自己的容器和卷。
 
 DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runner。Shell 能力还取决于宿主机内核与容器运行环境；镜像沿用 `workspace-write` 权限模式，可以通过 `DSH_PERMISSION_MODE` 配置应用启动默认值。
 
@@ -170,7 +186,7 @@ DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runne
 
 ### 修改默认版本或插件组合
 
-修改 `core/package.json` 中的主程序和 Mnemon CLI 版本；修改 `profiles/web/package.json` 的插件依赖与 `dsh.profile.bundles`。默认插件应声明 DSH bundle。然后重新生成锁文件并验证：
+修改 `core/package.json` 中的主程序、Mnemon CLI 和 agent-browser 版本；修改 `profiles/web/package.json` 的插件依赖与 `dsh.profile.bundles`。默认插件应声明 DSH bundle。然后重新生成锁文件并验证：
 
 ```sh
 make lock

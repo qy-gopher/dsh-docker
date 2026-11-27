@@ -21,7 +21,7 @@ RUN npm install --global "pnpm@${PNPM_VERSION}" \
 FROM toolchain AS base
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        bash bubblewrap curl ffmpeg fontconfig fonts-noto-cjk git gosu jq \
+        bash bubblewrap chromium curl ffmpeg fontconfig fonts-noto-cjk git gosu jq \
         openssh-client ripgrep tini tzdata unzip util-linux zip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -49,6 +49,7 @@ COPY scripts/prepare-profile.mjs /usr/local/lib/dsh-docker/prepare-profile.mjs
 RUN node /usr/local/lib/dsh-docker/prepare-profile.mjs \
     && /opt/dsh/node_modules/.bin/dsh --version \
     && /opt/dsh/node_modules/.bin/mnemon --version \
+    && /opt/dsh/node_modules/.bin/agent-browser --version \
     && DSH_HOME=/opt/dsh-seed DSH_AGENTS_HOME=/tmp/dsh-build-agents \
         /opt/dsh/node_modules/.bin/dsh web --dump-config \
         > /opt/dsh-image/default-config.yml
@@ -68,6 +69,7 @@ ENV HOME=/home/node \
     XDG_DATA_HOME=/home/node/.local/share \
     XDG_CACHE_HOME=/home/node/.cache \
     UV_CACHE_DIR=/home/node/.cache/uv \
+    AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium \
     PATH=/opt/dsh/node_modules/.bin:/opt/dsh-python/bin:/home/node/.local/bin:/home/node/.local/share/pnpm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     DSH_BIND_HOST=auto \
     DSH_PORT=3080 \

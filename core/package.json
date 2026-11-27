@@ -6,6 +6,7 @@
   "packageManager": "pnpm@11.28.5",
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",
-    "@mnemon-dev/mnemon": "0.2.15"
+    "@mnemon-dev/mnemon": "0.2.15",
+    "agent-browser": "0.45.0"
   }
 }

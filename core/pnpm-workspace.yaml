@@ -8,6 +8,7 @@ allowBuilds:
   '@deepseek-ai/dsh-subprocess-local': true
   '@google/genai': true
   '@vscode/ripgrep': true
+  agent-browser: true
   esbuild: true
   koffi: true
   node-pty: true

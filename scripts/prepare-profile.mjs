@@ -34,6 +34,7 @@ const versions = {
   node: process.versions.node,
   pnpm: execFileSync('pnpm', ['--version'], { encoding: 'utf8' }).trim(),
   uv: execFileSync('uv', ['--version'], { encoding: 'utf8' }).trim(),
+  chromium: execFileSync('chromium', ['--version'], { encoding: 'utf8' }).trim(),
   runtime: runtimePackage.dependencies,
   plugins: profilePackage.dependencies,
 };
