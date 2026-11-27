@@ -146,7 +146,18 @@ make smoke CONTAINER_ENGINE=podman
 
 DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runner。Shell 能力还取决于宿主机内核与容器运行环境；镜像沿用 `workspace-write` 权限模式，可以通过 `DSH_PERMISSION_MODE` 配置应用启动默认值。
 
-`.github/workflows/build.yml` 配置了单元测试、amd64 构建与持久化测试，以及 arm64 构建。工作流不发布镜像。自行制作多架构镜像时可使用 Docker Buildx：
+`.github/workflows/build.yml` 先运行单元测试、amd64 构建与持久化测试，以及 arm64 构建。全部通过后，默认分支的推送或手动运行会发布包含 `linux/amd64`、`linux/arm64` 的多架构镜像到 `ghcr.io/<账号或组织>/<仓库名>`，并更新 `latest` 和 `sha-<完整提交 SHA>` 标签。推送 `v*` 标签也会发布对应标签的镜像；语义版本标签另外生成版本号和主次版本标签，例如 `v1.2.3` 会生成 `v1.2.3`、`1.2.3`、`1.2`。Pull Request 和其他分支只构建验证。
+
+发布使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要额外配置 Registry Secret。首次发布的 GHCR 包默认为私有；如需匿名拉取，在仓库的 Packages 页面打开镜像包，在 Package settings 中将可见性改为 Public。私有包需要先通过具有 `read:packages` 权限的凭据登录 `ghcr.io`。
+
+使用发布的镜像时，将 `.env` 中的 `DSH_IMAGE` 改为实际镜像地址，例如 `ghcr.io/yourname/dsh-docker:latest`，然后运行：
+
+```sh
+docker compose pull
+docker compose up -d --no-build
+```
+
+Docker 会自动选择当前机器对应的架构。自行制作多架构镜像时可使用 Docker Buildx：
 
 ```sh
 docker buildx build --platform linux/amd64,linux/arm64 --output type=oci,dest=dsh-image.tar .
