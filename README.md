@@ -4,7 +4,7 @@
 
 ## 快速启动
 
-需要 Docker Engine 和 Docker Compose v2。
+需要 Docker Engine 和 Docker Compose v2.24 或更新版本。
 
 默认拉取公开镜像 `ghcr.io/qy-gopher/dsh-docker:latest`，支持 amd64、arm64，Docker 会自动选择当前机器的架构。将 [compose.yaml](compose.yaml) 和 [.env.example](.env.example) 放到部署目录，执行：
 
@@ -157,9 +157,22 @@ no_proxy=localhost,127.0.0.1,::1
 NODE_USE_ENV_PROXY=1
 ```
 
-Compose 会将这些变量直接传入容器；`NODE_USE_ENV_PROXY=1` 启用 Node.js 的环境代理支持，第三方工具根据自身对代理环境变量的支持使用代理。修改后执行 `docker compose up -d` 使配置生效。
+Compose 通过服务的 `env_file` 读取部署目录的 `.env`，将代理变量直接传入容器。文件中明确设置的代理值（包括空值）优先于宿主机的同名环境变量；不再通过 `${HTTP_PROXY}` 等表达式从启动 Compose 的 shell 获取代理。`NODE_USE_ENV_PROXY=1` 启用 Node.js 的环境代理支持，第三方工具根据自身对代理环境变量的支持使用代理。修改后执行 `docker compose up -d --force-recreate dsh` 重新创建容器，使配置生效；`docker compose restart` 会沿用旧环境变量。
 
-这里的 `proxy` 必须是容器能够访问的代理地址，`localhost` 或 `127.0.0.1` 指向容器自身。Compose 优先使用当前 shell 中的同名变量，其次读取 `.env`；如果宿主机已设置代理，也需要确保其地址适用于容器。
+这里的 `proxy` 必须是容器能够访问的代理地址，`localhost` 或 `127.0.0.1` 指向容器自身。代理运行在宿主机时，填写容器可访问的宿主机局域网 IP，并在代理软件中允许局域网连接。也可以在 `.env` 中设置标准 `ALL_PROXY` / `all_proxy`；不使用代理时，将大小写的 HTTP、HTTPS、ALL 代理变量都留空。
+
+检查实际容器中的代理值：
+
+```sh
+docker compose exec dsh printenv HTTP_PROXY http_proxy HTTPS_PROXY https_proxy ALL_PROXY all_proxy
+```
+
+已有部署需要先更新 `compose.yaml`，仅拉取镜像不会改变旧 Compose 的变量来源。升级前可临时清除启动 Compose 进程的代理变量，强制使用 `.env` 中的 HTTP/HTTPS 代理；已有本地镜像时使用 `--pull never`：
+
+```sh
+env -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u ALL_PROXY -u all_proxy \
+  docker compose --env-file .env up -d --force-recreate --pull never dsh
+```
 
 ## 构建与验证
 
@@ -176,7 +189,7 @@ make build CONTAINER_ENGINE=podman
 make smoke CONTAINER_ENGINE=podman
 ```
 
-`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留。`make smoke` 创建临时数据卷，启动 Web、以 `node` 用户验证 Chromium 与 agent-browser 的页面打开、中文快照、点击和截图，验证临时登录、安装一个本地测试插件、保存真实 Mnemon 记忆和持久化文件，再重建容器验证插件加载与数据保留。浏览器测试使用内嵌页面；测试不调用模型 API，结束后清理自己的容器和卷。
+`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留，以及 Compose 中 `.env` 代理覆盖宿主机变量和空值禁用代理。`make smoke` 创建临时数据卷，启动 Web、以 `node` 用户验证 Chromium 与 agent-browser 的页面打开、中文快照、点击和截图，验证临时登录、安装一个本地测试插件、保存真实 Mnemon 记忆和持久化文件，再重建容器验证插件加载与数据保留。浏览器测试使用内嵌页面；测试不调用模型 API，结束后清理自己的容器和卷。
 
 DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runner。Shell 能力还取决于宿主机内核与容器运行环境；镜像沿用 `workspace-write` 权限模式，可以通过 `DSH_PERMISSION_MODE` 配置应用启动默认值。
 

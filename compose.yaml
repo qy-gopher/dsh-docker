@@ -10,6 +10,10 @@ services:
     volumes:
       - ./data:/home/node:Z
     working_dir: /home/node/workspaces/default
+    # Read proxy values directly; shell interpolation would override this file.
+    env_file:
+      - path: .env
+        required: false
     environment:
       DSH_BIND_HOST: auto
       DSH_PORT: '3080'
@@ -19,13 +23,6 @@ services:
       DSH_PERMISSION_MODE: ${DSH_PERMISSION_MODE:-workspace-write}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       TZ: ${TZ:-Asia/Shanghai}
-      NODE_USE_ENV_PROXY: ${NODE_USE_ENV_PROXY:-1}
-      HTTP_PROXY: ${HTTP_PROXY:-}
-      http_proxy: ${http_proxy:-}
-      HTTPS_PROXY: ${HTTPS_PROXY:-}
-      https_proxy: ${https_proxy:-}
-      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
-      no_proxy: ${no_proxy:-localhost,127.0.0.1,::1}
     logging:
       driver: json-file
       options:
