@@ -1,8 +1,7 @@
 services:
   dsh:
-    image: ${DSH_IMAGE:-dsh-docker:local}
-    build:
-      context: .
+    image: ${DSH_IMAGE:-ghcr.io/qy-gopher/dsh-docker:latest}
+    pull_policy: always
     restart: unless-stopped
     stop_grace_period: 45s
     ports:

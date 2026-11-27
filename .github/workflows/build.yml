@@ -17,9 +17,7 @@ jobs:
         with:
           node-version: '24.22.3'
       - run: make test
-      - run: |
-          docker compose --env-file .env.example config --quiet
-          docker compose --env-file .env.ghcr.example config --quiet
+      - run: docker compose --env-file .env.example config --quiet
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:

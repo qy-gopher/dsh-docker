@@ -1,7 +1,6 @@
 .env
 .env.*
 !.env.example
-!.env.ghcr.example
 data/
 node_modules/
 .pnpm-store/
