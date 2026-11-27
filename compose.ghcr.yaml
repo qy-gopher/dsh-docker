@@ -1,0 +1,29 @@
+services:
+  dsh:
+    image: ${DSH_IMAGE:-ghcr.io/qy-gopher/dsh-docker:latest}
+    pull_policy: always
+    restart: unless-stopped
+    stop_grace_period: 45s
+    ports:
+      - '${DSH_PUBLISH_ADDRESS:-127.0.0.1}:${DSH_PUBLISH_PORT:-3080}:3080'
+    volumes:
+      - ./data:/home/node
+    working_dir: /home/node/workspaces/default
+    environment:
+      DSH_BIND_HOST: auto
+      DSH_PORT: '3080'
+      DSH_PUBLIC_URL: ${DSH_PUBLIC_URL:-http://localhost:3080/}
+      DSH_TRUSTED_HOSTS: ${DSH_TRUSTED_HOSTS:-}
+      DSH_FIX_PERMISSIONS: ${DSH_FIX_PERMISSIONS:-0}
+      DSH_PERMISSION_MODE: ${DSH_PERMISSION_MODE:-workspace-write}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_USE_ENV_PROXY: ${DSH_NODE_USE_ENV_PROXY:-1}
+      HTTP_PROXY: ${DSH_HTTP_PROXY:-}
+      HTTPS_PROXY: ${DSH_HTTPS_PROXY:-}
+      NO_PROXY: ${DSH_NO_PROXY:-localhost,127.0.0.1,::1}
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

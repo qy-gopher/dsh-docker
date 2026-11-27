@@ -6,6 +6,30 @@
 
 需要 Docker Engine 和 Docker Compose v2。
 
+### 拉取 GHCR 镜像部署
+
+公开镜像 `ghcr.io/qy-gopher/dsh-docker:latest` 可匿名拉取，支持 amd64、arm64，Docker 会自动选择当前机器的架构。将 [compose.ghcr.yaml](compose.ghcr.yaml) 和 [.env.ghcr.example](.env.ghcr.example) 下载到部署目录：
+
+```sh
+mkdir -p dsh
+cd dsh
+curl -fsSL https://raw.githubusercontent.com/qy-gopher/dsh-docker/main/compose.ghcr.yaml -o compose.ghcr.yaml
+curl -fsSL https://raw.githubusercontent.com/qy-gopher/dsh-docker/main/.env.ghcr.example -o .env
+docker compose up -d
+docker compose logs -f dsh
+```
+
+已克隆仓库时，可以直接运行 `cp .env.ghcr.example .env`，再执行上面的 `docker compose` 命令。环境模板通过 `COMPOSE_FILE=compose.ghcr.yaml` 选择部署配置；启动时会拉取最新镜像，用户数据保存到部署目录的 `./data`。
+
+需要固定镜像版本时，修改 `.env` 中的 `DSH_IMAGE`，使用发布的版本标签或 `sha-<完整提交 SHA>` 标签。更新镜像并重建容器：
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+### 从源码构建
+
 ```sh
 cp .env.example .env
 docker compose up -d --build
@@ -148,16 +172,9 @@ DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runne
 
 `.github/workflows/build.yml` 先运行单元测试、amd64 构建与持久化测试，以及 arm64 构建。全部通过后，默认分支的推送或手动运行会发布包含 `linux/amd64`、`linux/arm64` 的多架构镜像到 `ghcr.io/<账号或组织>/<仓库名>`，并更新 `latest` 和 `sha-<完整提交 SHA>` 标签。推送 `v*` 标签也会发布对应标签的镜像；语义版本标签另外生成版本号和主次版本标签，例如 `v1.2.3` 会生成 `v1.2.3`、`1.2.3`、`1.2`。Pull Request 和其他分支只构建验证。
 
-发布使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要额外配置 Registry Secret。首次发布的 GHCR 包默认为私有；如需匿名拉取，在仓库的 Packages 页面打开镜像包，在 Package settings 中将可见性改为 Public。私有包需要先通过具有 `read:packages` 权限的凭据登录 `ghcr.io`。
+发布使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要额外配置 Registry Secret。本仓库的 GHCR 镜像已公开，部署示例见上面的“拉取 GHCR 镜像部署”。其他仓库首次发布的 GHCR 包默认为私有；如需匿名拉取，在仓库的 Packages 页面打开镜像包，在 Package settings 中将可见性改为 Public。私有包需要先通过具有 `read:packages` 权限的凭据登录 `ghcr.io`。
 
-使用发布的镜像时，将 `.env` 中的 `DSH_IMAGE` 改为实际镜像地址，例如 `ghcr.io/yourname/dsh-docker:latest`，然后运行：
-
-```sh
-docker compose pull
-docker compose up -d --no-build
-```
-
-Docker 会自动选择当前机器对应的架构。自行制作多架构镜像时可使用 Docker Buildx：
+自行制作多架构镜像时可使用 Docker Buildx：
 
 ```sh
 docker buildx build --platform linux/amd64,linux/arm64 --output type=oci,dest=dsh-image.tar .
