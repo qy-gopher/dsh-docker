@@ -26,7 +26,24 @@ jobs:
           tags: dsh-docker:ci
           cache-from: type=gha,scope=amd64
           cache-to: type=gha,mode=max,scope=amd64
-      - run: make smoke CONTAINER_ENGINE=docker IMAGE=dsh-docker:ci
+      - name: Verify startup and persistence
+        id: smoke
+        run: make smoke CONTAINER_ENGINE=docker IMAGE=dsh-docker:ci 2>&1 | tee "$RUNNER_TEMP/dsh-smoke.log"
+      - name: Report smoke failure
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          log = (Path(os.environ['RUNNER_TEMP']) / 'dsh-smoke.log').read_text()
+          log = re.sub(r'\x1b\[[0-9;]*m', '', log)
+          log = re.sub(r'([?&#](?:token|auth|key)=)[^\s&#]+', r'\1<redacted>', log, flags=re.I)
+          message = '\n'.join(log.splitlines()[-100:])[-16000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Container smoke test::{message}')
+          PY
 
   arm64:
     runs-on: ubuntu-latest
