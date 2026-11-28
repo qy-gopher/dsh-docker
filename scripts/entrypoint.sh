@@ -72,7 +72,7 @@ if [[ ! -f "$profile_directory/package.json" ]]; then
         "$seed_directory/." "$staging_directory/"
     mv -- "$staging_directory" "$profile_directory"
     staging_directory=''
-    printf 'dsh-docker: initialized the web profile with preinstalled mnemon and IM.\n'
+    printf 'dsh-docker: initialized the web profile with preinstalled mnemon and QQ Bot.\n'
 fi
 flock -u 9
 exec 9>&-

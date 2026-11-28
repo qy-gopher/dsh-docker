@@ -55,7 +55,7 @@ RUN node /usr/local/lib/dsh-docker/prepare-profile.mjs \
         > /opt/dsh-image/default-config.yml
 
 FROM base AS runtime
-LABEL org.opencontainers.image.title="deepseek-harness with mnemon and IM" \
+LABEL org.opencontainers.image.title="deepseek-harness with mnemon and QQ Bot" \
       org.opencontainers.image.description="DSH Web with a persistent /home/node and preinstalled plugins" \
       org.opencontainers.image.licenses="MIT"
 

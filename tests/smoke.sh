@@ -26,6 +26,7 @@ trap cleanup EXIT
 start_web() {
     "$container_engine" run -d --name "$test_container" \
         --shm-size 1g \
+        --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
         --volume "$test_volume:/home/node" --publish 127.0.0.1::3080 \
         --env DSH_PUBLIC_URL=http://localhost:3080/ \
         --env DSH_TRUSTED_HOSTS=127.0.0.1 \
@@ -57,9 +58,13 @@ start_web
     mnemon --version
     chromium --version
     agent-browser --version
+    bwrap --version
     python -c "import docx, openpyxl, pptx, pypdf"
-    node -e '\''const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync(process.env.DSH_HOME+"/profiles/web/package.json")); for(const name of ["dsh-mnemon","@xmanrui/dsh-im"]) { if(!p.dsh.profile.bundles.includes(name)) throw new Error(name+" is disabled"); if(!fs.existsSync(process.env.DSH_HOME+"/profiles/web/node_modules/"+name)) throw new Error(name+" is missing"); }'\''
+    node -e '\''const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync(process.env.DSH_HOME+"/profiles/web/package.json")); for(const name of ["dsh-mnemon","@tencent-connect/dsh-qqbot"]) { if(!p.dsh.profile.bundles.includes(name)) throw new Error(name+" is disabled"); if(!fs.existsSync(process.env.DSH_HOME+"/profiles/web/node_modules/"+name)) throw new Error(name+" is missing"); }'\''
 '
+printf 'Checking DSH bubblewrap confinement as the node user...\n'
+"$container_engine" exec --interactive --user node "$test_container" \
+    node --input-type=module < "$repository_directory/tests/sandbox_smoke.mjs"
 printf 'Checking headless browser automation as the node user...\n'
 "$container_engine" exec --interactive --user node "$test_container" \
     python - < "$repository_directory/tests/browser_smoke.py"
@@ -81,8 +86,8 @@ PY
     dsh plugin --profile web add -w file:/home/node/.dsh/smoke-plugin.tgz
 "$container_engine" exec --user node "$test_container" bash -euc '
     printf "\n# DSH_DOCKER_USER_CONFIGURATION\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
-    mkdir -p "$DSH_HOME/integrations/dsh-im"
-    printf "persistent IM state\n" > "$DSH_HOME/integrations/dsh-im/docker-smoke-state"
+    mkdir -p "$HOME/.dsh-qqbot"
+    printf "persistent QQ Bot state\n" > "$HOME/.dsh-qqbot/docker-smoke-state"
     printf "persistent workspace\n" > "$HOME/workspaces/default/docker-smoke-file"
     mnemon --store docker-smoke remember "DSH_DOCKER_PERSISTENT_MEMORY" --no-diff
 '
@@ -95,7 +100,7 @@ start_web
     test -f "$DSH_HOME/profiles/web/node_modules/dsh-docker-smoke-plugin/index.mjs"
     node -e '\''const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync(process.env.DSH_HOME+"/profiles/web/package.json")); if(!p.dsh.profile.bundles.includes("dsh-docker-smoke-plugin")) throw new Error("Installed bundle was lost");'\''
     rg --quiet DSH_DOCKER_USER_CONFIGURATION "$DSH_HOME/profiles/web/cordis.patch.yml"
-    rg --quiet "persistent IM state" "$DSH_HOME/integrations/dsh-im/docker-smoke-state"
+    rg --quiet "persistent QQ Bot state" "$HOME/.dsh-qqbot/docker-smoke-state"
     rg --quiet "persistent workspace" "$HOME/workspaces/default/docker-smoke-file"
     test -s "$HOME/workspaces/default/docker-browser-smoke.png"
     mnemon --store docker-smoke recall DSH_DOCKER_PERSISTENT_MEMORY --basic \
@@ -103,4 +108,4 @@ start_web
 '
 "$container_engine" logs "$test_container" > "$temporary_directory/recreated.log" 2>&1
 grep -Fq DSH_DOCKER_SMOKE_PLUGIN_LOADED "$temporary_directory/recreated.log"
-printf 'Smoke test passed: browser automation works; Web, plugins, memory, IM state, and workspace survive container recreation.\n'
+printf 'Smoke test passed: DSH bubblewrap and browser automation work; Web, plugins, memory, QQ Bot state, and workspace survive container recreation.\n'

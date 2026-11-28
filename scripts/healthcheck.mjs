@@ -5,7 +5,7 @@ try {
   const host = resolveBindHost();
   const port = resolvePort();
   const authority = `${isIP(host) === 6 ? `[${host}]` : host}:${port}`;
-  // A direct local TCP probe also works when model/IM traffic uses an HTTP proxy.
+  // A direct local TCP probe also works when model/QQ traffic uses an HTTP proxy.
   const socket = createConnection({ host, port: Number(port) });
   let header = '';
   let completed = false;

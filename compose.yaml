@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     stop_grace_period: 45s
     shm_size: '1gb'
+    # Allow bwrap to create user/mount/PID namespaces as the node user.
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
     ports:
       - '${DSH_PUBLISH_ADDRESS:-127.0.0.1}:${DSH_PUBLISH_PORT:-3080}:3080'
     volumes:

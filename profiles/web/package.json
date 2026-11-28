@@ -3,7 +3,7 @@
   "private": true,
   "dependencies": {
     "dsh-mnemon": "0.5.55",
-    "@xmanrui/dsh-im": "5.10.0"
+    "@tencent-connect/dsh-qqbot": "0.5.5"
   },
   "dsh": {
     "profile": {
@@ -11,7 +11,7 @@
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
         "dsh-mnemon",
-        "@xmanrui/dsh-im"
+        "@tencent-connect/dsh-qqbot"
       ]
     }
   }

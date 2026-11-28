@@ -1,6 +1,6 @@
 # dsh-docker
 
-构建预装 dsh-mnemon 和 IM 插件的 DeepSeek Harness Web 镜像。用户 home 固定为 `/home/node`，插件、配置、记忆、会话、IM 状态和工作区都通过一个目录持久化。主程序放在 `/opt/dsh`，更换镜像后沿用用户数据。
+构建预装 dsh-mnemon 和腾讯官方 QQ 机器人插件的 DeepSeek Harness Web 镜像。用户 home 固定为 `/home/node`，插件、配置、记忆、会话、QQ 机器人状态和工作区都通过一个目录持久化。主程序放在 `/opt/dsh`，更换镜像后沿用用户数据。
 
 ## 快速启动
 
@@ -25,7 +25,7 @@ docker compose up -d
 
 用日志中打印的完整登录链接进入 DSH，默认访问地址为 `http://localhost:3080/`。API Key 可以填写到 `.env` 的 `DEEPSEEK_API_KEY`，也可以进入 DSH 的模型设置后保存。安装插件、打开界面不需要模型 Key；调用模型需要配置凭据。
 
-启动后，进入“设置 → IM机器人”绑定需要使用的机器人。IM 账号绑定和模型配置保存在持久化目录中。
+启动后，进入“设置 → QQ 机器人”，使用手机 QQ 扫码绑定。机器人凭据保存在持久化 profile 的配置中，机器人状态、媒体与默认工作区保存在 `/home/node/.dsh-qqbot`。
 
 ## 镜像内容
 
@@ -35,12 +35,12 @@ docker compose up -d
 | pnpm | `11.28.5` |
 | DSH | `0.2.2-rc.5` |
 | dsh-mnemon | `0.5.55` |
-| IM 插件 | `@xmanrui/dsh-im@5.10.0` |
+| QQ 机器人插件 | `@tencent-connect/dsh-qqbot@0.5.5` |
 | Mnemon CLI | `@mnemon-dev/mnemon@0.2.15` |
 | 浏览器自动化 | Debian Chromium、`agent-browser@0.45.0`，支持 amd64、arm64 |
 | Python | Debian Python 3.11、uv `0.9.11`、python-docx、openpyxl、python-pptx、pypdf |
 | 日常工具 | Bash、Git、SSH、curl、rg、jq、zip/unzip、ffmpeg、中文字体 |
-| 运行辅助 | tini、gosu、bubblewrap；保留 DSH 随包交付的原生依赖 |
+| 运行辅助 | tini、gosu、bubblewrap（`bwrap`，供 DSH 沙箱使用）；保留 DSH 随包交付的原生依赖 |
 
 Node 依赖使用两个提交到仓库的 `pnpm-lock.yaml`；Python 依赖使用包含校验哈希的 `python/requirements.lock`。Python 库安装在镜像的 `/opt/dsh-python` 虚拟环境中，`python` 已加入 PATH。
 
@@ -82,9 +82,10 @@ Compose 把宿主机 `./data` 挂载到容器 `/home/node`。因此容器中的 
 │   ├── .credentials.yaml              DSH 管理的凭据
 │   ├── sessions/                      会话
 │   ├── storages/                      工作区等持久记录
-│   ├── attachments/                   附件
-│   ├── integrations/                  各 IM 渠道配置和状态
-│   └── im/                            IM 默认工作目录
+│   └── attachments/                   附件
+├── .dsh-qqbot/                        QQ 机器人状态与模型偏好
+│   ├── media/                         QQ 媒体附件
+│   └── workspace/                     QQ 默认工作区
 ├── .mnemon/                           记忆、档案、Provider 状态
 ├── .agents/                           共享 AGENTS.md 与 skills
 ├── .config/
@@ -94,7 +95,7 @@ Compose 把宿主机 `./data` 挂载到容器 `/home/node`。因此容器中的 
     └── default/                       Web 默认工作区
 ```
 
-IM 默认使用 `/home/node/.dsh/im`。如果希望 IM 项目也集中在 `workspaces` 下，可以创建 `/home/node/workspaces/im`，然后在机器人设置中选择该目录。容器内工作区的绝对路径应保持稳定：mnemon 的集中工作区模式根据路径生成存储 ID。
+QQ 机器人默认使用 `/home/node/.dsh-qqbot/workspace`。如果希望 QQ 项目也集中在 `workspaces` 下，可以创建 `/home/node/workspaces/qqbot`，然后在插件配置中将 `cwd` 设为该目录。容器内工作区的绝对路径应保持稳定：mnemon 的集中工作区模式根据路径生成存储 ID。
 
 入口脚本先准备持久化目录权限，随后以 `node` 用户（UID/GID `1000:1000`）运行。默认 Compose 保留这一初始化流程；若自行设置 `user: 1000:1000`，需要提前确保挂载目录及工作目录可写。恢复的旧目录如果属于其他 UID，可将 `DSH_FIX_PERMISSIONS=1` 用于一次启动，完成后恢复为 `0`。
 
@@ -117,11 +118,36 @@ docker compose restart dsh
 
 ```sh
 docker compose exec --user node dsh dsh plugin --profile web add -w dsh-mnemon@0.5.55
-docker compose exec --user node dsh dsh plugin --profile web add -w @xmanrui/dsh-im@5.10.0
+docker compose exec --user node dsh dsh plugin --profile web add -w @tencent-connect/dsh-qqbot@0.5.5
 docker compose restart dsh
 ```
 
 依赖、lockfile、启用列表和配置都位于持久化 profile 中。其他 profile 的插件需要分别安装。用户通过 `npm install -g` 安装的 CLI 默认放到 `/home/node/.local`；通过 `pnpm add -g` 安装的 CLI 放到持久化的 `PNPM_HOME`。DSH 主程序仍由镜像管理。
+
+已有部署从 dsh-im 切换到腾讯官方插件时，更新镜像和 `compose.yaml` 后执行：
+
+```sh
+docker compose exec --user node dsh dsh plugin --profile web remove -w @xmanrui/dsh-im
+docker compose exec --user node dsh dsh plugin --profile web add -w @tencent-connect/dsh-qqbot@0.5.5
+docker compose restart dsh
+```
+
+已有 profile 会保留原插件，需要执行上述命令完成切换，然后在“设置 → QQ 机器人”重新绑定。旧 IM 状态保留在数据目录中。
+
+### DSH 沙箱
+
+镜像安装 Debian 的 `bubblewrap` 包，提供 `/usr/bin/bwrap`，版本记录在 `/opt/dsh-image/versions.json`。Compose 设置 `seccomp=unconfined` 和 `apparmor=unconfined`，允许 `node` 用户通过非特权用户命名空间创建 bwrap 所需的挂载与 PID 命名空间。这会放开容器默认的 seccomp 和 AppArmor 限制；DSH 命令的文件访问范围由 bwrap 挂载规则约束。
+
+默认 `DSH_PERMISSION_MODE=workspace-write`：工作区和显式授权的额外目录可写，其他路径只读，`/tmp` 为每次命令独立的临时目录。可通过 `DSH_PERMISSION_MODE` 修改应用启动默认值。宿主机内核必须支持并允许非特权用户命名空间。
+
+直接使用 `docker run` 时，同样传入 `--security-opt seccomp=unconfined --security-opt apparmor=unconfined`。已有部署更新 Compose 权限后，执行 `docker compose up -d --force-recreate dsh` 使设置生效。
+
+可在容器中以实际运行用户检查 bwrap：
+
+```sh
+docker compose exec --user node dsh bwrap \
+  --ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent -- true
+```
 
 ## 局域网与反向代理
 
@@ -189,9 +215,7 @@ make build CONTAINER_ENGINE=podman
 make smoke CONTAINER_ENGINE=podman
 ```
 
-`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留，以及 Compose 中 `.env` 代理覆盖宿主机变量和空值禁用代理。`make smoke` 创建临时数据卷，启动 Web、以 `node` 用户验证 Chromium 与 agent-browser 的页面打开、中文快照、点击和截图，验证临时登录、安装一个本地测试插件、保存真实 Mnemon 记忆和持久化文件，再重建容器验证插件加载与数据保留。浏览器测试使用内嵌页面；测试不调用模型 API，结束后清理自己的容器和卷。
-
-DSH 的默认 Linux 沙箱会选择 bubblewrap 或随包交付的 Landlock runner。Shell 能力还取决于宿主机内核与容器运行环境；镜像沿用 `workspace-write` 权限模式，可以通过 `DSH_PERMISSION_MODE` 配置应用启动默认值。
+`make test` 覆盖具体 IP 绑定、公开 URL 与可信地址、认证响应的健康检查、首次初始化、并发初始化、符号链接和已有用户配置保留，以及 Compose 中 `.env` 代理覆盖宿主机变量和空值禁用代理。`make smoke` 创建临时数据卷，启动 Web、以 `node` 用户验证 DSH 实际选择 bwrap，以及工作区和额外目录写入、范围外写入拒绝、只读模式、独立 `/tmp` 与 PID 命名空间；随后验证 Chromium 与 agent-browser 的页面打开、中文快照、点击和截图，验证临时登录与 QQ 绑定页接口、安装一个本地测试插件、保存真实 Mnemon 记忆和 QQ 状态，再重建容器验证插件加载与数据保留。浏览器测试使用内嵌页面；测试不调用模型 API，结束后清理自己的容器和卷。
 
 `.github/workflows/build.yml` 先运行单元测试、amd64 构建与持久化测试，以及 arm64 构建。全部通过后，默认分支的推送或手动运行会发布包含 `linux/amd64`、`linux/arm64` 的多架构镜像到 `ghcr.io/<账号或组织>/<仓库名>`，并更新 `latest` 和 `sha-<完整提交 SHA>` 标签。推送 `v*` 标签也会发布对应标签的镜像；语义版本标签另外生成版本号和主次版本标签，例如 `v1.2.3` 会生成 `v1.2.3`、`1.2.3`、`1.2`。Pull Request 和其他分支只构建验证。
 
@@ -236,6 +260,6 @@ docker compose start
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)：CLI、profile、home 路径、Web 绑定与认证。
 - [dsh-mnemon](https://github.com/omdsh-dev/dsh-mnemon)：记忆存储与远程管理。
 - [Mnemon CLI](https://github.com/mnemon-dev/mnemon)：默认本地记忆后端。
-- [dsh-im](https://github.com/xmanrui/dsh-im)：IM 集成，npm 完整包名为 `@xmanrui/dsh-im`。
+- [dsh-qqbot](https://github.com/tencent-connect/dsh-qqbot)：腾讯官方 QQ 机器人插件，npm 完整包名为 `@tencent-connect/dsh-qqbot`。
 
 本仓库构建脚本使用 MIT 许可证。镜像内第三方组件适用各自的许可证。

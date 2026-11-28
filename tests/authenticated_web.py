@@ -1,5 +1,6 @@
 """Check the Web page using the temporary container's own login credential."""
 import http.cookiejar
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -42,6 +43,15 @@ def authenticate(engine, container, origin, output_directory):
     if not cookies:
         raise RuntimeError('The test server did not issue a browser session cookie.')
     print(f'Authenticated Web returned HTTP 200; saved {len(cookies)} temporary cookie(s).')
+    # Verify the pinned QQ bundle loaded its binding page routes, without binding an account.
+    binding_url = urllib.parse.urljoin(origin, '/qqbot/im-qqbot/bind')
+    with opener.open(binding_url, timeout=15) as response:
+        if response.status != 200:
+            raise RuntimeError(f'QQ Bot binding endpoint returned HTTP {response.status}.')
+        state = json.load(response)
+    if not isinstance(state, dict) or not isinstance(state.get('phase'), str):
+        raise RuntimeError('QQ Bot binding endpoint did not return its binding state.')
+    print('QQ Bot binding endpoint returned HTTP 200 with a binding state.')
 
 
 if __name__ == '__main__':
